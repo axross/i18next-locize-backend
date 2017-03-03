@@ -1,76 +1,18 @@
-(function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-  typeof define === 'function' && define.amd ? define(factory) :
-  (global.i18nextLocizeBackend = factory());
-}(this, (function () { 'use strict';
+'use strict';
 
-function debounce(func, wait, immediate) {
-  var timeout;
-  return function () {
-    var context = this,
-        args = arguments;
-    var later = function later() {
-      timeout = null;
-      if (!immediate) func.apply(context, args);
-    };
-    var callNow = immediate && !timeout;
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-    if (callNow) func.apply(context, args);
-  };
-}
-
-function getLastOfPath(object, path, Empty) {
-  function cleanKey(key) {
-    return key && key.indexOf('###') > -1 ? key.replace(/###/g, '.') : key;
-  }
-
-  var stack = typeof path !== 'string' ? [].concat(path) : path.split('.');
-  while (stack.length > 1) {
-    if (!object) return {};
-
-    var key = cleanKey(stack.shift());
-    if (!object[key] && Empty) object[key] = new Empty();
-    object = object[key];
-  }
-
-  if (!object) return {};
-  return {
-    obj: object,
-    k: cleanKey(stack.shift())
-  };
-}
-
-function setPath(object, path, newValue) {
-  var _getLastOfPath = getLastOfPath(object, path, Object),
-      obj = _getLastOfPath.obj,
-      k = _getLastOfPath.k;
-
-  obj[k] = newValue;
-}
-
-function pushPath(object, path, newValue, concat) {
-  var _getLastOfPath2 = getLastOfPath(object, path, Object),
-      obj = _getLastOfPath2.obj,
-      k = _getLastOfPath2.k;
-
-  obj[k] = obj[k] || [];
-  if (concat) obj[k] = obj[k].concat(newValue);
-  if (!concat) obj[k].push(newValue);
-}
-
-function getPath(object, path) {
-  var _getLastOfPath3 = getLastOfPath(object, path),
-      obj = _getLastOfPath3.obj,
-      k = _getLastOfPath3.k;
-
-  if (!obj) return undefined;
-  return obj[k];
-}
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _utils = require('./utils');
+
+var utils = _interopRequireWildcard(_utils);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -93,7 +35,7 @@ function ajax(url, options, callback, data, cache) {
   } catch (e) {
     window.console && console.log(e);
   }
-}
+};
 
 function getDefaults() {
   return {
@@ -126,7 +68,7 @@ var Backend = function () {
       this.options = _extends({}, getDefaults(), this.options, options);
 
       this.queuedWrites = {};
-      this.debouncedWrite = debounce(this.write, 10000);
+      this.debouncedWrite = utils.debounce(this.write, 10000);
     }
   }, {
     key: 'getLanguages',
@@ -177,17 +119,17 @@ var Backend = function () {
     value: function write(lng, namespace) {
       var _this2 = this;
 
-      var lock = getPath(this.queuedWrites, ['locks', lng, namespace]);
+      var lock = utils.getPath(this.queuedWrites, ['locks', lng, namespace]);
       if (lock) return;
 
       var url = this.services.interpolator.interpolate(this.options.addPath, { lng: lng, ns: namespace, projectId: this.options.projectId, version: this.options.version });
 
-      var missings = getPath(this.queuedWrites, [lng, namespace]);
-      setPath(this.queuedWrites, [lng, namespace], []);
+      var missings = utils.getPath(this.queuedWrites, [lng, namespace]);
+      utils.setPath(this.queuedWrites, [lng, namespace], []);
 
       if (missings.length) {
         // lock
-        setPath(this.queuedWrites, ['locks', lng, namespace], true);
+        utils.setPath(this.queuedWrites, ['locks', lng, namespace], true);
 
         var payload = {};
         missings.forEach(function (item) {
@@ -199,7 +141,7 @@ var Backend = function () {
           // TODO: if statusCode === 4xx do log
 
           // unlock
-          setPath(_this2.queuedWrites, ['locks', lng, namespace], false);
+          utils.setPath(_this2.queuedWrites, ['locks', lng, namespace], false);
 
           missings.forEach(function (missing) {
             if (missing.callback) missing.callback();
@@ -213,7 +155,7 @@ var Backend = function () {
   }, {
     key: 'queue',
     value: function queue(lng, namespace, key, fallbackValue, callback) {
-      pushPath(this.queuedWrites, [lng, namespace], { key: key, fallbackValue: fallbackValue || '', callback: callback });
+      utils.pushPath(this.queuedWrites, [lng, namespace], { key: key, fallbackValue: fallbackValue || '', callback: callback });
 
       this.debouncedWrite(lng, namespace);
     }
@@ -224,6 +166,4 @@ var Backend = function () {
 
 Backend.type = 'backend';
 
-return Backend;
-
-})));
+exports.default = Backend;
